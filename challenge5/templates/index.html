@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alaska Department of Snow - Online Agent</title>
+  <style>
+    :root { --ads-blue: #1a3a5c; --ads-accent: #2f6fb0; --bg: #eef3f7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+           background: var(--bg); color: #14202b; }
+    header { background: var(--ads-blue); color: #fff; padding: 16px 20px; display: flex;
+             align-items: center; gap: 12px; }
+    header .snow { font-size: 26px; }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    header p { margin: 2px 0 0; font-size: 12px; opacity: 0.8; }
+    main { max-width: 720px; margin: 24px auto; background: #fff; border-radius: 12px;
+           box-shadow: 0 2px 14px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column;
+           height: 76vh; }
+    #log { flex: 1; overflow-y: auto; padding: 18px; }
+    .msg { margin: 10px 0; display: flex; }
+    .msg.user { justify-content: flex-end; }
+    .bubble { max-width: 78%; padding: 10px 14px; border-radius: 14px; line-height: 1.45;
+              white-space: pre-wrap; font-size: 14px; }
+    .user .bubble { background: var(--ads-accent); color: #fff; border-bottom-right-radius: 4px; }
+    .bot .bubble { background: #eef1f4; color: #14202b; border-bottom-left-radius: 4px; }
+    .meta { font-size: 11px; color: #6b7a88; margin: 2px 6px; align-self: flex-end; }
+    form { display: flex; gap: 8px; padding: 14px; border-top: 1px solid #e3e9ee; background: #fafcfe; }
+    input { flex: 1; padding: 11px 14px; border: 1px solid #cdd8e1; border-radius: 22px; font-size: 14px; }
+    button { padding: 11px 18px; border: 0; border-radius: 22px; background: var(--ads-accent);
+             color: #fff; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .hint { text-align: center; color: #6b7a88; font-size: 12px; padding: 6px 0 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="snow">&#10052;</span>
+    <div>
+      <h1>Alaska Department of Snow</h1>
+      <p>Online Agent &middot; plowing, closures, services &amp; live weather</p>
+    </div>
+  </header>
+
+  <main>
+    <div id="log">
+      <div class="msg bot">
+        <div class="bubble">Hello! I'm the Alaska Department of Snow assistant. Ask me about
+        plowing, school and road closures, ADS services, or current weather conditions.</div>
+      </div>
+    </div>
+    <form id="chat-form">
+      <input id="input" autocomplete="off" placeholder="Ask about plowing, closures, or the weather..." />
+      <button id="send" type="submit">Send</button>
+    </form>
+  </main>
+  <div class="hint">Answers are grounded in official ADS documents and live National Weather Service data.</div>
+
+  <script>
+    const logEl = document.getElementById("log");
+    const form = document.getElementById("chat-form");
+    const input = document.getElementById("input");
+    const send = document.getElementById("send");
+
+    function addMessage(text, who) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg " + who;
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
+      logEl.appendChild(wrap);
+      logEl.scrollTop = logEl.scrollHeight;
+      return bubble;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      addMessage(text, "user");
+      input.value = "";
+      send.disabled = true;
+      const thinking = addMessage("...", "bot");
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text }),
+        });
+        const data = await res.json();
+        thinking.textContent = data.reply || "(no response)";
+      } catch (err) {
+        thinking.textContent = "Sorry, something went wrong reaching the agent.";
+      } finally {
+        send.disabled = false;
+        input.focus();
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+    });
+  </script>
+</body>
+</html>
