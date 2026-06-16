@@ -1,0 +1,28 @@
+%% Alaska Department of Snow - Online Agent: solution architecture
+flowchart TD
+    U["Resident"] -->|question| W["Flask Website<br/>(chat UI, Cloud Shell)"]
+    W -->|POST /chat| A["Agent Orchestrator<br/>(notebook / app.py)"]
+
+    A --> MA1["Model Armor<br/>input filter<br/>(PI / jailbreak, RAI, SDP)"]
+    MA1 -->|clean| RT{"Weather-related<br/>question?"}
+
+    RT -->|yes| NWS["National Weather Service API<br/>live forecast + active alerts<br/>(Anchorage)"]
+    RT -->|always retrieve| RAG["BigQuery RAG<br/>VECTOR_SEARCH over ADS docs"]
+
+    GCS[("Cloud Storage<br/>alaska-dept-of-snow<br/>(web pages, txt, PDFs)")] -->|ingest + chunk| RAW[("BigQuery table<br/>ADS document chunks")]
+    RAW -->|AI.GENERATE_EMBEDDING<br/>text-embedding-005| EMB[("BigQuery table<br/>ADS embeddings")]
+    EMB --> RAG
+
+    NWS --> G["Gemini 2.5 Flash<br/>grounded answer"]
+    RAG --> G
+
+    G --> MA2["Model Armor<br/>output validation"]
+    MA2 --> LOG[("Log<br/>all prompts + responses")]
+    MA2 -->|validated answer| W
+
+    subgraph Quality["Offline quality (notebook)"]
+        TEST["pytest unit tests<br/>(mocked clients)"]
+        EVAL["Gen AI Evaluation Service<br/>compare prompt designs"]
+    end
+    A -.tested by.-> TEST
+    G -.evaluated by.-> EVAL
